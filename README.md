@@ -2,9 +2,6 @@
 
 AI-powered research assistant that surfaces the *latest* research papers (e.g. from arXiv) for a topic and produces concise, structured summaries using a Retrieval-Augmented Generation (RAG) pipeline backed by a **local LLM via Ollama**.
 
-## Why This Exists
-Researchers, engineers, and candidates preparing for interviews need a fast snapshot of what changed recently in their domain ("What’s new in diffusion models this week?"). ScholarSnap automates that: fetch → embed → retrieve → summarize.
-
 ## Development Phases (Roadmap)
 1. Frontend First (React + Tailwind) – wire to mocked backend responses for fast UI iteration.
 2. Core Backend Skeleton (FastAPI) – health + RAG placeholder (mock data + fake embeddings + placeholder summarizer).
@@ -17,15 +14,16 @@ Researchers, engineers, and candidates preparing for interviews need a fast snap
 9. Optional: Auth, saved topics, deployment (Docker / Fly.io / Render).
 
 ## Current Status (Phase 1–2 Skeleton)
-✅ Frontend scaffold (React + Vite + Tailwind).
 ✅ Minimalistic chat UI: centered prompt, wide input bar, send button enabled only when text is entered.
-✅ Backend scaffold (FastAPI) with placeholder RAG `/rag/summary` endpoint.  
-✅ In-memory mock vector store + hash-based embeddings (deterministic placeholder).  
-🚧 Next: Replace mock arXiv client with real API calls.  
+✅ Backend scaffold (FastAPI) with health check and `/rag/summary` endpoint.
+✅ Frontend and backend are integrated: chat input sends topic to backend and displays response.
+✅ Real arXiv retrieval: backend fetches recent papers matching topic, filters by date, and returns metadata (title, abstract, authors).
+✅ LLM integration: backend sends context to local Ollama server and returns generated summary.
+🚧 Next: Improve error handling, prompt design, and add more features (e.g., blog post generation).
 
 ## High-Level Architecture (Target State)
 ```
-┌──────────┐      Query/topic        ┌─────────────────────┐
+┌──────────┐      Query/topic       ┌──────────────────────┐
 │  React   │ ─────────────────────▶ │  FastAPI Backend     │
 │ Frontend │                        │  /rag/summary        │
 └────┬─────┘                        ├──────────┬───────────┤
