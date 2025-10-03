@@ -13,13 +13,16 @@ AI-powered research assistant that surfaces the *latest* research papers (e.g. f
 8. Evaluation / Prompt Refinement – add lightweight eval script + prompt versions.
 9. Optional: Auth, saved topics, deployment (Docker / Fly.io / Render).
 
-## Current Status (Phase 1–2 Skeleton)
+## Current Status (Phase 1–5 Complete)
 ✅ Minimalistic chat UI: centered prompt, wide input bar, send button enabled only when text is entered.
 ✅ Backend scaffold (FastAPI) with health check and `/rag/summary` endpoint.
 ✅ Frontend and backend are integrated: chat input sends topic to backend and displays response.
 ✅ Real arXiv retrieval: backend fetches recent papers matching topic, filters by date, and returns metadata (title, abstract, authors).
 ✅ LLM integration: backend sends context to local Ollama server and returns generated summary.
-🚧 Next: Improve error handling, prompt design, and add more features (e.g., blog post generation).
+✅ Modular backend architecture: separated services and routers for maintainability.
+✅ Configuration management: centralized config loading from YAML file.
+✅ CORS middleware: enables frontend-backend communication across different ports.
+🚧 Next: Add vector embeddings, persistent storage, and background refresh jobs.
 
 ## High-Level Architecture (Target State)
 ```
@@ -55,16 +58,15 @@ ScholarSnap/
 		tailwind.config.js
 	backend/
 		app/
-			main.py              # FastAPI entrypoint
+			main.py              # FastAPI entrypoint, router registration
+			config.py            # Configuration loader from YAML
 			routers/
-				health.py
-				rag.py             # RAG summary endpoint (placeholder)
-			rag/
-				arxiv_client.py    # Mock now → real arXiv queries later
-				embeddings.py       # Placeholder embedding logic
-				vector_store.py     # Simple in-memory store
-				llm.py              # Placeholder Ollama wrapper
-				pipeline.py         # Orchestration
+				health.py        # Health check endpoint
+				rag.py           # RAG summary endpoint
+			services/
+				arxiv.py         # Real arXiv API integration
+				llm.py           # Ollama LLM integration & context building
+		config.yaml              # Application configuration
 		requirements.txt
 	README.md
 	LICENSE
@@ -74,13 +76,21 @@ ScholarSnap/
 ## Backend API (Current)
 `GET /health/` → `{ "status": "ok" }`
 
-`GET /rag/summary?topic=diffusion+models&days=7&k=5`
-Response (placeholder):
+`GET /rag/summary?topic=fourier` 
+Response:
 ```json
 {
-	"topic": "diffusion models",
-	"summary": "Summary for diffusion models ...",
-	"papers": [ {"id": "mock:0", "title": "Diffusion Models Paper 0", ...} ]
+	"topic": "fourier",
+	"summary": "• Paper title 1\n• Paper title 2\n• Paper title 3",
+	"papers": [
+		{
+			"id": "http://arxiv.org/abs/2410.xxxxx",
+			"title": "Recent Advances in Fourier Analysis",
+			"abstract": "This paper presents...",
+			"published": "2024-10-02T17:30:15Z",
+			"authors": ["Author Name", "Co-Author Name"]
+		}
+	]
 }
 ```
 
@@ -89,19 +99,21 @@ Response (placeholder):
 - Add `embedding_model`, `llm_model` metadata.
 - Add `/rag/raw` to return full retrieved context.
 
-## Ollama Integration Plan
-1. Install Ollama (https://ollama.ai) and pull a model: `ollama pull mistral`.
-2. Add environment variable: `OLLAMA_MODEL=mistral` (fallback default).
-3. Implement POST to `http://localhost:11434/api/generate` with prompt template:
-	 ```
-	 SYSTEM: You are a scientific research assistant. Summarize new findings.
-	 USER: Summarize the latest research in <topic>. Use bullet points.
-	 CONTEXT:
-	 <paper 1 title> - <abstract>
-	 ...
-	 OUTPUT: Concise bullet list + optional key trends.
-	 ```
-4. Stream tokens to client (optional improvement).
+## Ollama Integration (Complete)
+✅ Ollama integration implemented with configurable model selection.
+✅ Configuration via `config.yaml`:
+```yaml
+ollama:
+  url: "http://localhost:11434/api/generate"
+  model: "mistral:latest"
+  
+arxiv:
+  api_url: "https://export.arxiv.org/api/query"
+  default_days: 7
+  batch_size: 5
+```
+✅ Implemented POST to Ollama API with structured prompts for paper title extraction.
+✅ Streaming response handling and JSON parsing from Ollama server.
 
 ## Prompting Strategy (Draft)
 Goal: Balanced brevity + signal of novelty.
@@ -128,12 +140,14 @@ Opens: http://localhost:5173
 ### Backend Dev
 ```
 cd backend
-python -m venv .venv
-source .venv/bin/activate
+python -m venv venv
+source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8002
 ```
-Open: http://localhost:8000/docs
+Open: http://localhost:8002/docs
+
+Note: Ensure Ollama is running locally with a model pulled (e.g., `ollama pull mistral`).
 
 ### Testing (Future)
 - Will add pytest + httpx async client tests under `backend/tests/`.
@@ -141,22 +155,24 @@ Open: http://localhost:8000/docs
 
 ## Next Actions (Implementation Backlog)
 Short-Term:
-1. Implement real arXiv client (httpx, query building, date filter).
-2. Introduce dedupe key (paper id) in vector store.
-3. Add pydantic models for Paper / Summary.
-4. Add basic error handling + timeouts.
+1. ✅ ~~Implement real arXiv client (httpx, query building, date filter).~~
+2. ✅ ~~Add basic error handling + timeouts.~~
+3. ✅ ~~Implement Ollama summarizer (stream or full response).~~
+4. Add vector embeddings with sentence-transformers for semantic search.
+5. Introduce dedupe key (paper id) in vector store.
+6. Add pydantic models for Paper / Summary for better type safety.
 
 Medium:
-5. Swap embeddings to sentence-transformers (configurable embedding batch size).
-6. Implement Ollama summarizer (stream or full response).
-7. Replace in-memory store with FAISS persistent index.
+7. Replace in-memory processing with FAISS persistent index.
 8. Add `/config` endpoint exposing current models.
+9. Implement proper error handling and user feedback for LLM failures.
+10. Add content filtering and quality checks for paper summaries.
 
 Longer-Term:
-9. Topic subscriptions & background refresh.
-10. Summarization evaluation harness.
-11. Multi-model ensemble or reranking (e.g., Cohere Rerank optional).
-12. Deploy docker-compose for full stack.
+11. Topic subscriptions & background refresh.
+12. Summarization evaluation harness.
+13. Multi-model ensemble or reranking (e.g., Cohere Rerank optional).
+14. Deploy docker-compose for full stack.
 
 ## Design Decisions (Rationale Log)
 | Decision | Rationale | Revisit When |
@@ -167,7 +183,20 @@ Longer-Term:
 | Hash embeddings placeholder | Avoid early dependency weight | After arXiv integration stable |
 | Local Ollama LLM | Privacy + offline dev | If quality insufficient / need hosted API |
 
-## Environment Variables (Planned)
+## Environment Variables (Current Configuration)
+Configuration is now managed via `config.yaml`:
+```yaml
+ollama:
+  url: "http://localhost:11434/api/generate"
+  model: "mistral:latest"
+  
+arxiv:
+  api_url: "https://export.arxiv.org/api/query"
+  default_days: 7
+  batch_size: 5
+```
+
+Planned environment variable overrides:
 ```
 OLLAMA_MODEL=mistral
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2

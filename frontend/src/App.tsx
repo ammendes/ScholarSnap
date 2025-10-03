@@ -15,12 +15,12 @@ function App() {
     setLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:8000/rag/summary?topic=${encodeURIComponent(input)}`);
+      const res = await fetch(`http://localhost:8002/rag/summary?topic=${encodeURIComponent(input)}`);
       const data = await res.json();
       let botText = data.summary;
-      if (data.papers && Array.isArray(data.papers) && data.papers.length > 0) {
-        botText += "\n\nPapers:\n" + data.papers.map((p: any) => `- ${p.title}`).join("\n");
-      }
+      //if (data.papers && Array.isArray(data.papers) && data.papers.length > 0) {
+      //  botText += "\n\nPapers:\n" + data.papers.map((p: any) => `- ${p.title}`).join("\n");
+      //}
       setMessages((msgs) => [...msgs, { role: "bot", text: botText }]);
     } catch (err) {
       setMessages((msgs) => [...msgs, { role: "bot", text: "Error: Could not get response." }]);
@@ -33,13 +33,15 @@ function App() {
   if (messages.length === 0 && !loading) {
     return (
       <div className="min-h-screen w-screen bg-neutral-900 flex flex-col justify-center items-center">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8 text-center">ScholarSnap</h1>
-        <div className="w-full max-w-2xl px-4">
+        <h1 className="text-7xl font-bold text-gray-100 text-center mb-2">Scholar Snap</h1>
+        <h2 className="text-4xl text-gray-400 mb-8 text-center">Your Weekly Preprint Digest</h2>
+
+        <div className="w-full max-w-6xl px-4">
           <form className="flex items-center bg-neutral-800 rounded-full shadow-lg px-6 py-4" onSubmit={handleSubmit}>
             <input
               type="text"
               className="flex-1 bg-transparent text-gray-100 placeholder-gray-400 outline-none border-none"
-              placeholder="Ask anything about research papers..."
+              placeholder="Type your scientific research topic of interest..."
               value={input}
               onChange={e => setInput(e.target.value)}
             />
@@ -72,7 +74,7 @@ function App() {
   // ChatGPT-like chat layout after first message
   return (
     <div className="min-h-screen w-screen bg-neutral-900 flex flex-col items-center py-8">
-      <div className="w-full max-w-2xl px-4 flex flex-col h-[80vh]">
+      <div className="w-full max-w-6xl px-4 flex flex-col h-[80vh]">
         <div className="flex-1 overflow-y-auto bg-neutral-800 rounded-lg shadow-lg p-6 mb-4">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -108,7 +110,7 @@ function App() {
           <input
             type="text"
             className="flex-1 bg-transparent text-gray-100 placeholder-gray-400 outline-none border-none"
-            placeholder="Ask anything about research papers..."
+            placeholder="Type your scientific research topic of interest..."
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={loading}
