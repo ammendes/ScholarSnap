@@ -3,3 +3,7 @@ uvicorn
 feedparser
 httpx
 pyyaml
+langgraph
+langchain
+langchain_community
+langchain-ollama

@@ -15,9 +15,15 @@ function App() {
     setLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:8002/rag/summary?topic=${encodeURIComponent(input)}`);
-      const data = await res.json();
-      let botText = data.summary;
+      const res = await fetch("http://localhost:8002/chat/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: input }),
+    });
+    const data = await res.json();
+    let botText = data.clarification
+      ? data.clarification
+      : data.summary || "No summary generated.";
       //if (data.papers && Array.isArray(data.papers) && data.papers.length > 0) {
       //  botText += "\n\nPapers:\n" + data.papers.map((p: any) => `- ${p.title}`).join("\n");
       //}

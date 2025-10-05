@@ -1,7 +1,9 @@
 
-from fastapi import FastAPI
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import rag, health
+from app.langgraph_workflow import langgraph_app, ChatState
 
 
 # Initialize FastAPI app and include routers
@@ -18,5 +20,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# LangGraph-powered conversational endpoint
+@app.post("/chat/")
+async def chat_endpoint(request: Request):
+    data = await request.json()
+    user_input = data.get("message")
+    state = {
+        "user_input": user_input,
+        "topic": None,
+        "confirmed": False,
+        "papers": None,
+        "summary": None,
+        "clarification": None,
+    }
+    # Run the workflow (async)
+    result = await langgraph_app.ainvoke(state)
+    return result
 
 
