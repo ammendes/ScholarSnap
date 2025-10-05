@@ -1,3 +1,4 @@
+
 from langchain_ollama import OllamaLLM
 import httpx
 import json
@@ -45,11 +46,29 @@ async def get_paper_list(topic: str, context: str):
             if line:
                 obj = json.loads(line)
                 summary += obj.get("response", "")
-        return summary or "No summary generated."
+        # Do NOT append processing prompt here; handled by backend separately
+        return summary.strip() or "No summary generated."
 
 
+# Helper function to build context from paper titles
 def build_context(papers):
     context = ""
     for paper in papers:
         context += f"{paper['title']}\n"
     return context
+
+
+# Async function to classify user's response to the processing prompt
+async def classify_processing_response(user_response: str):
+    llm = OllamaLLM(model=OLLAMA_MODEL)
+    prompt = (
+        "You are a scientific assistant. "
+        "Classify the following user response as one of three categories: 'positive', 'negative', or 'unclear'. "
+        "A positive response means the user wants to proceed with processing. "
+        "A negative response means the user does NOT want to proceed. "
+        "If the response is ambiguous or you cannot tell, reply ONLY with 'I could not understand that. Please be more specific. (yes/no)'. "
+        "Reply ONLY with one word: 'positive', 'negative', or 'unclear'. "
+        f"\nUser response: {user_response}"
+    )
+    result = await llm.ainvoke(prompt)
+    return result.strip().lower()

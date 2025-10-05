@@ -21,13 +21,28 @@ function App() {
       body: JSON.stringify({ message: input }),
     });
     const data = await res.json();
-    let botText = data.clarification
-      ? data.clarification
-      : data.summary || "No summary generated.";
-      //if (data.papers && Array.isArray(data.papers) && data.papers.length > 0) {
-      //  botText += "\n\nPapers:\n" + data.papers.map((p: any) => `- ${p.title}`).join("\n");
-      //}
-      setMessages((msgs) => [...msgs, { role: "bot", text: botText }]);
+    let botText = "";
+    // If backend signals stop, only show stop message
+    const isStop = data.next_action === "stop_and_cleanup" || (data.processing_prompt && data.processing_prompt.toLowerCase().includes("stop"));
+    if (isStop) {
+      botText = data.processing_prompt || "Session stopped.";
+    } else {
+      if (data.paper_list) {
+        botText += `${data.paper_list}\n\n`;
+      }
+      if (data.summary) {
+        botText += `${data.summary}\n\n`;
+      }
+      if (data.processing_prompt) {
+        botText += data.processing_prompt;
+      } else if (data.clarification) {
+        botText += data.clarification;
+      }
+      if (!botText.trim()) {
+        botText = "No summary generated.";
+      }
+    }
+    setMessages((msgs) => [...msgs, { role: "bot", text: botText.trim() }]);
     } catch (err) {
       setMessages((msgs) => [...msgs, { role: "bot", text: "Error: Could not get response." }]);
     }

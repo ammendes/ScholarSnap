@@ -22,20 +22,32 @@ app.add_middleware(
 )
 
 # LangGraph-powered conversational endpoint
+
 @app.post("/chat/")
 async def chat_endpoint(request: Request):
     data = await request.json()
     user_input = data.get("message")
-    state = {
-        "user_input": user_input,
-        "topic": None,
-        "confirmed": False,
-        "papers": None,
-        "summary": None,
-        "clarification": None,
-    }
+    # Track session state (could be improved with real session management)
+    # For now, use a simple in-memory approach
+    # You may want to use a persistent/session store for production
+    if hasattr(app, "_last_state") and app._last_state.get("awaiting_processing_confirmation"):
+        # The last state was awaiting confirmation, so treat input as response
+        state = app._last_state.copy()
+        state["user_response"] = user_input
+    else:
+        # New topic/session
+        state = {
+            "user_input": user_input,
+            "topic": None,
+            "confirmed": False,
+            "papers": None,
+            "summary": None,
+            "clarification": None,
+        }
     # Run the workflow (async)
     result = await langgraph_app.ainvoke(state)
+    # Save state for next turn
+    app._last_state = result.copy() if hasattr(result, "copy") else dict(result)
     return result
 
 

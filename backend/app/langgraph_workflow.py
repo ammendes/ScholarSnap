@@ -1,3 +1,4 @@
+
 from langgraph.graph import StateGraph, END
 from langchain_ollama import OllamaLLM
 from app.services.arxiv import fetch_recent_arxiv_papers
@@ -43,21 +44,56 @@ async def typo_check_node(state: dict):
 # Node: RAG pipeline to extract papers
 async def rag_node(state: dict):
     papers = await fetch_recent_arxiv_papers(state['topic_lower']) # Fetch papers from arXiv using lowercase
+    
     # Enforce batch size limit everywhere
     papers = papers[:BATCH_SIZE]
     print(f"[RAG Node] Number of papers detected after batch size enforcement: {len(papers)}")
     context = build_context(papers) # Structure papers into context
+    
     # Download PDFs if papers are found
     if papers:
         from app.services.pdf_utils import download_arxiv_pdfs
         pdf_paths = await download_arxiv_pdfs(papers)
         state['pdf_paths'] = pdf_paths
+        # Prompt user after successful download
+        if pdf_paths:
+            state['processing_prompt'] = (
+                f"Download successful for {len(pdf_paths)} papers. Do you want to proceed to processing? (yes/no)"
+            )
+            state['awaiting_processing_confirmation'] = True
+        else:
+            state['processing_prompt'] = "No PDFs were downloaded."
+            state['awaiting_processing_confirmation'] = False
     else:
         state['pdf_paths'] = []
+        state['processing_prompt'] = "No PDFs were downloaded."
+        state['awaiting_processing_confirmation'] = False
+    
     # Use original topic (not lowercased) for LLM prompt at the end
     summary = await get_paper_list(state['topic'], context)
     state['papers'] = papers
     state['summary'] = summary
+
+
+    # If awaiting confirmation, interpret user response
+    if state.get('awaiting_processing_confirmation') and 'user_response' in state:
+        from app.services.llm import classify_processing_response
+        decision = await classify_processing_response(state['user_response'])
+        print(f"[Processing response classification]: {decision}")
+        state['processing_decision'] = decision
+        if decision == 'positive':
+            state['next_action'] = 'proceed_processing'
+            state['awaiting_processing_confirmation'] = False
+        elif decision == 'negative':
+            # Delete files and inform user
+            from app.services.pdf_utils import cleanup_tmp_folder
+            cleanup_tmp_folder()
+            state['next_action'] = 'stop_and_cleanup'
+            state['processing_prompt'] = "Ok, we'll stop here. Downloaded files have been deleted."
+            state['awaiting_processing_confirmation'] = False
+        else:
+            state['next_action'] = 'clarify_processing'
+            state['processing_prompt'] = "Sorry, I did not understand that. Could you be more specific? Do you want to process the downloaded files? (yes/no)"
     return state
 
 
@@ -67,6 +103,19 @@ async def end_node(state: dict):
     summary = state.get("summary")
     topic = state.get("topic")
     greeting = state.get("greeting")
+
+    # Handle user declining processing
+    if state.get("next_action") == "stop_and_cleanup":
+        return {
+            "greeting": greeting,
+            "topic": None,
+            "summary": None,
+            "papers": None,
+            "paper_list": None,
+            "no_papers": None,
+            "clarification": None,
+            "processing_prompt": "Sure, maybe next time!"
+        }
 
     if papers is None:
         # No RAG step was run (invalid topic or session start)
@@ -119,6 +168,8 @@ workflow.add_conditional_edges(
     "typo_check",
     lambda state: "rag" if state["confirmed"] else "end"
 )
+
+# Add new nodes for processing confirmation
 workflow.add_node("rag", rag_node)
 workflow.add_node("end", end_node)
 
@@ -127,8 +178,7 @@ workflow.add_edge("greet", "typo_check")
 
 
 
-# rag: if papers found -> end, else -> end (handle in end_node)
-workflow.add_edge("rag", "end")
+
 
 workflow.set_finish_point("end")
 

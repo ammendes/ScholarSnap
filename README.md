@@ -160,28 +160,28 @@ ScholarSnap is maintained as a demonstration of applied RAG with local inference
 
 ## Planned Workflow Enhancements: PDF Download, OCR, and Summarization
 
-To deepen paper analysis, ScholarSnap will incrementally add:
+## Upcoming Workflow: PDF Processing, Multimodal Extraction, and User Interaction
 
-1. **PDF Download Node**: After papers are found, download each paper’s PDF (from arXiv) to a temporary folder.
-2. **OCR & Summarization Node**: For each downloaded PDF, extract text (using OCR if needed) and generate a summary of findings using an LLM or dedicated summarizer.
-3. **Enhanced Response Node**: Reply with a paragraph for each paper, including title, authors, submission date, and summary of findings.
+After downloading PDFs, the user-facing LLM (Mistral) will:
+1. Inform the user that downloads were successful and ask if they want to proceed to processing.
+2. Interpret the user's response:
+   - If positive: proceed to processing.
+   - If negative: respond "Ok, we'll stop here" and delete the files.
+   - If unclear: ask again for clarification.
 
-### Implementation Strategy
-- **Incremental Development**: Add one node at a time, testing each thoroughly before moving to the next.
-- **Error Handling**: Each node will handle errors gracefully (e.g., skip failed downloads, log issues).
-- **Fallbacks**: If OCR or summarization fails, fall back to original metadata (title, authors).
-- **Testing**: Unit tests for each new function/node.
-- **Logging**: Clear logging at each step for debugging.
-- **Feature Flags**: Use config flags to enable/disable new features, allowing easy rollback to simpler workflow if needed.
+### Processing Pipeline (per PDF)
+1. Convert the PDF to images (e.g., with `pdf2image`).
+2. Use LLaVA (open-source multimodal LLM) to extract text, tables, and figures from each image.
+3. LLaVA generates a summary of the findings for each paper.
+4. Pass the extracted information and summary to the user-facing LLM (Mistral), which presents a paragraph for each paper to the user.
 
-### Example Extended Workflow (Mermaid)
-```mermaid
-graph TD
-	greet -- "User writes topic of interest" --> typo_check
-	typo_check -- invalid --> invalid
-	typo_check -- valid --> rag
-	rag -- "No papers found" --> no_papers
-	rag -- "Papers found" --> download_pdfs["Download PDFs"]
-	download_pdfs -- "Downloads successful" --> ocr_summarize["OCR & Summarize"]
-	ocr_summarize -- "Summaries ready" --> enhanced_response["Enhanced Response"]
-```
+### Implementation Task List
+1. ✅ ~~Update backend workflow to prompt user after PDF download and interpret response (positive/negative/unclear).~~
+2. ✅ ~~Implement file deletion logic if user declines processing.~~
+3. Integrate `pdf2image` to convert PDFs to images.
+4. Integrate LLaVA for multimodal extraction (text, tables, figures) and summarization.
+5. Store extracted content and summaries for each paper.
+6. Update user-facing LLM logic to present findings as a paragraph per paper.
+7. Add error handling and logging for each step.
+8. Add unit tests for new functions/nodes.
+9. Update configuration to support feature flags for multimodal processing.
