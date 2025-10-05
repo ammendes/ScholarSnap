@@ -16,12 +16,12 @@ ScholarSnap is an AI-powered research assistant that surfaces the latest researc
 ```
 ScholarSnap/
 	frontend/                # React + Vite + Tailwind
-		src/
+	no_papers["No papers found"]
 			App.tsx              # Chat UI
 			main.tsx
 			index.css
 		package.json
-		tsconfig.json
+	rag -- "No papers found" --> no_papers
 		tailwind.config.js
 	backend/
 		app/
@@ -104,8 +104,8 @@ graph TD
 	greet --> user_input --> typo_check
 	typo_check -- invalid --> invalid
 	typo_check -- valid --> rag
-	rag -- if0 --> no_papers
-	rag -- if>0 --> paper_list
+	rag -- "No papers found" --> no_papers
+	rag -- "Papers found" --> paper_list
 ```
 
 
