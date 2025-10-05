@@ -5,4 +5,4 @@ ollama:
 arxiv:
   api_url: "https://export.arxiv.org/api/query"
   default_days: 7
-  batch_size: 1
+  batch_size: 2

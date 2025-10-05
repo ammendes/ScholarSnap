@@ -3,11 +3,23 @@
 ScholarSnap is an AI-powered research assistant that surfaces the latest research papers from arXiv for a given topic and produces concise, structured summaries using a Retrieval-Augmented Generation (RAG) pipeline backed by a local LLM (Ollama/Mistral).
 
 ## Features & Current State
+-
+## PDF Download Node
+
+After papers are found, the backend downloads each arXiv paper's PDF to a temporary folder. The download logic:
+- Handles arXiv 301 redirects automatically, retrying with the correct URL if needed.
+- Logs errors for failed downloads and continues processing remaining papers.
+- Stores PDFs in a `tmp` folder within the backend app directory.
+- Is implemented in `app/services/pdf_utils.py`.
+
+This ensures reliable access to paper content for future OCR and summarization steps, and robust error handling keeps the workflow resilient.
 
 - **LangGraph workflow**: Conversational orchestration with greeting, topic validation, RAG pipeline, and clarification/error handling.
 - **Strict topic validation**: LLM checks if the topic is a valid scientific research topic (including anatomical/medical terms) and prompts for re-entry if invalid.
-- **Phrase-based arXiv search**: Only returns papers where the full topic phrase appears in the title or abstract, ensuring high relevance.
-- **LLM summarization**: Only paper titles are sent to the LLM, which outputs a bullet-point list. No summaries, explanations, or extra text.
+- **Phrase-based arXiv search**: Only returns papers where the full topic phrase appears in the title or abstract, ensuring high relevance. Backend logs the number of papers detected before and after batch size enforcement for transparency.
+- **PDF download node**: After papers are found, the backend downloads each arXiv paper's PDF to a temporary folder. The download logic handles arXiv 301 redirects automatically, retrying with the correct URL if needed, and logs errors for failed downloads while continuing with remaining papers. PDFs are stored in a `tmp` folder within the backend app directory, implemented in `app/services/pdf_utils.py`.
+- **LLM summarization**: Only paper titles are sent to the LLM, which is strictly instructed to output only the provided titles as bullet points. Output is post-processed to guarantee only real, retrieved titles are shown.
+- **Modular topic validation**: LLM topic validation logic is now modularized in `llm.py` for maintainability and reuse.
 - **Frontend chat UI**: Minimal React app with clear error and clarification handling, showing bot and user messages in a chat layout.
 - **Ollama integration**: Uses local Mistral model by default, configurable via YAML.
 - **Modular codebase**: FastAPI backend with routers/services, React frontend, and centralized config.

@@ -39,4 +39,5 @@ async def fetch_recent_arxiv_papers(topic: str, days: int = DEFAULT_DAYS, batch_
                 "published": entry.published,
                 "authors": authors
             })
-    return papers
+    print(f"[arXiv API] Number of papers detected before batch size enforcement: {len(papers)}")
+    return papers[:batch_size]

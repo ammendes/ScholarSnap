@@ -2,7 +2,8 @@ from langgraph.graph import StateGraph, END
 from langchain_ollama import OllamaLLM
 from app.services.arxiv import fetch_recent_arxiv_papers
 from app.services.llm import build_context, get_paper_list
-from app.config import OLLAMA_MODEL
+from app.config import OLLAMA_MODEL, BATCH_SIZE
+
 
 # Define the state for the workflow
 class ChatState:
@@ -23,25 +24,14 @@ async def greet_node(state: dict):
 # Node: LLM typo check
 async def typo_check_node(state: dict):
     
-    # Use Ollama to check if the input is a valid scientific topic
-    llm = OllamaLLM(model=OLLAMA_MODEL) # Define LLM instance
-    prompt = (                          # Define prompt
-        "You are a scientific assistant. "
-        "Your task is to determine if the given topic is a valid scientific research topic. "
-        "Anatomical, medical, biological, physical, chemical, computational, and engineering topics are all valid. "
-        "When checking if a topic is valid, ignore capitalization/case. "
-        "If the topic is valid, reply ONLY with: \"Valid\" "
-        "If the topic is invalid, reply ONLY with: \"Invalid scientific topic. Please try a different one.\" "
-        f"\nTopic: {state['user_input']}"
-    )
-    result = llm.invoke(prompt).strip() # Get LLM response
+    from app.services.llm import validate_topic_with_llm
+    result = await validate_topic_with_llm(state['user_input'])
     print(f"[LLM typo check raw response]: {result}")  # Debug log
-    result_lower = result.lower() # Normalize to all lowercase for comparison
-
+    result_lower = result.lower()
     # Only proceed if LLM explicitly says 'valid'
     if result_lower == "valid":
-        state['topic'] = state['user_input']  # Preserve original user input
-        state['topic_lower'] = state['user_input'].lower()  # Use lowercase for all internal steps
+        state['topic'] = state['user_input']
+        state['topic_lower'] = state['user_input'].lower()
         state['confirmed'] = True
     elif result_lower.startswith("invalid"):
         state['confirmed'] = False
@@ -53,7 +43,17 @@ async def typo_check_node(state: dict):
 # Node: RAG pipeline to extract papers
 async def rag_node(state: dict):
     papers = await fetch_recent_arxiv_papers(state['topic_lower']) # Fetch papers from arXiv using lowercase
+    # Enforce batch size limit everywhere
+    papers = papers[:BATCH_SIZE]
+    print(f"[RAG Node] Number of papers detected after batch size enforcement: {len(papers)}")
     context = build_context(papers) # Structure papers into context
+    # Download PDFs if papers are found
+    if papers:
+        from app.services.pdf_utils import download_arxiv_pdfs
+        pdf_paths = await download_arxiv_pdfs(papers)
+        state['pdf_paths'] = pdf_paths
+    else:
+        state['pdf_paths'] = []
     # Use original topic (not lowercased) for LLM prompt at the end
     summary = await get_paper_list(state['topic'], context)
     state['papers'] = papers

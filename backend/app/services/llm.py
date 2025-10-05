@@ -1,18 +1,39 @@
+from langchain_ollama import OllamaLLM
 import httpx
 import json
 from app.config import OLLAMA_API_URL, OLLAMA_MODEL
 
 
-# Function to call Ollama LLM API
+# Async function to validate topic with Ollama LLM
+async def validate_topic_with_llm(topic: str):
+    llm = OllamaLLM(model=OLLAMA_MODEL)
+    prompt = (
+        "You are a scientific assistant. "
+        "Your task is to determine if the given topic is a valid scientific research topic. "
+        "Anatomical, medical, biological, physical, chemical, computational, and engineering topics are all valid. "
+        "When checking if a topic is valid, ignore capitalization/case. "
+        "If the topic is valid, reply ONLY with: 'Valid' "
+        "If the topic is invalid, reply ONLY with: 'Invalid scientific topic. Please try a different one.' "
+        f"\nTopic: {topic}"
+    )
+    result = await llm.ainvoke(prompt)
+    return result.strip()
+
+
+# Async function to process and get paper list summary from Ollama LLM
 async def get_paper_list(topic: str, context: str):
 
-    # Send only paper titles, and instruct LLM to output only bulletpoints
+    # Only include paper title in the prompt, and instruct LLM to output only bulletpoints
     if not context.strip():
         return "No papers found for this topic."
     prompt = (
         f"Below is a list of research paper titles.\n"
-        f"Your task: Output ONLY the paper titles as a list of bulletpoints, using the dot character (•) as the bullet. Do NOT include authors, abstracts, summaries, explanations, or any other text. Do not output anything except the bullet list.\n"
-        f"Start your response with: Here are the latest papers on '{topic}':\n\n"
+        f"Your task: Output ONLY the paper titles provided below as a list of bulletpoints.\n"
+        f"Use the dot character (•) as the bullet.\n"
+        f"Do NOT include authors, abstracts, summaries, explanations, or any other text.\n"
+        f"Do NOT generate or invent titles. ONLY output the exact titles given, in the order they appear.\n"
+        f"Start your response with: 'Here are the latest papers on '{topic}'':\n"
+        f"The list of papers is as follows:\n"
         f"{context}"
     )
     payload = {"model": OLLAMA_MODEL, "prompt": prompt}
