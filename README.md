@@ -93,19 +93,20 @@ Health check endpoint.
 
 ```mermaid
 graph TD
-	greet["LLM greets user"]
-	user_input["User writes topic of interest"]
-	typo_check["LLM checks if input is a valid scientific topic"]
-	invalid["LLM says 'Invalid scientific topic, please try again'"]
-	rag["RAG Pipeline: fetch papers from arXiv"]
-	paper_list["Paper list in bulletpoints"]
-	no_papers["LLM replies with 'No papers found'"]
+		greet["App waits for user input"]
+		typo_check["LLM checks if input is a valid scientific topic"]
+		invalid["LLM replies with 'Invalid scientific topic, please try again'"]
+		rag["RAG Pipeline: fetch papers from arXiv"]
+		paper_list["LLM replies with list of paper titles"]
+		no_papers["LLM replies with "No papers found""]
 
-	greet --> user_input --> typo_check
-	typo_check -- invalid --> invalid
-	typo_check -- valid --> rag
-	rag -- "No papers found" --> no_papers
-	rag -- "Papers found" --> paper_list
+		greet -- "User writes topic of interest" --> typo_check
+		typo_check -- invalid --> invalid
+		typo_check -- valid --> rag
+		rag -- "No papers found" --> no_papers
+		rag -- "Papers found" --> paper_list
+		invalid --> greet
+		no_papers --> greet
 ```
 
 
