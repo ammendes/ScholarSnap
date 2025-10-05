@@ -153,3 +153,31 @@ MIT
 
 ---
 ScholarSnap is maintained as a demonstration of applied RAG with local inference. Iterative improvements are ongoing.
+
+## Planned Workflow Enhancements: PDF Download, OCR, and Summarization
+
+To deepen paper analysis, ScholarSnap will incrementally add:
+
+1. **PDF Download Node**: After papers are found, download each paper’s PDF (from arXiv) to a temporary folder.
+2. **OCR & Summarization Node**: For each downloaded PDF, extract text (using OCR if needed) and generate a summary of findings using an LLM or dedicated summarizer.
+3. **Enhanced Response Node**: Reply with a paragraph for each paper, including title, authors, submission date, and summary of findings.
+
+### Implementation Strategy
+- **Incremental Development**: Add one node at a time, testing each thoroughly before moving to the next.
+- **Error Handling**: Each node will handle errors gracefully (e.g., skip failed downloads, log issues).
+- **Fallbacks**: If OCR or summarization fails, fall back to original metadata (title, authors).
+- **Testing**: Unit tests for each new function/node.
+- **Logging**: Clear logging at each step for debugging.
+- **Feature Flags**: Use config flags to enable/disable new features, allowing easy rollback to simpler workflow if needed.
+
+### Example Extended Workflow (Mermaid)
+```mermaid
+graph TD
+	greet -- "User writes topic of interest" --> typo_check
+	typo_check -- invalid --> invalid
+	typo_check -- valid --> rag
+	rag -- "No papers found" --> no_papers
+	rag -- "Papers found" --> download_pdfs["Download PDFs"]
+	download_pdfs -- "Downloads successful" --> ocr_summarize["OCR & Summarize"]
+	ocr_summarize -- "Summaries ready" --> enhanced_response["Enhanced Response"]
+```
