@@ -1,4 +1,3 @@
-
 # ScholarSnap
 
 ScholarSnap is an AI-powered research assistant that surfaces the latest research papers from arXiv for a given topic and produces concise, structured summaries using a Retrieval-Augmented Generation (RAG) pipeline backed by a local LLM (Ollama/Mistral).
@@ -42,49 +41,73 @@ ScholarSnap/
 	.gitignore
 ```
 
+
 ## Backend API
 
-`POST /chat/` (main conversational endpoint)
-Request:
+### `POST /chat/`
+Main conversational endpoint. Accepts a user topic and returns a structured response.
+
+**Request Body:**
 ```json
-{ "message": "fourier" }
+{ "message": "<topic>" }
 ```
-Response (valid topic, papers found):
+
+**Response Fields:**
+- `greeting`: Greeting message (string)
+- `topic`: The validated topic (string or null)
+- `summary`: Bullet-point list of paper titles, or a message if no papers found (string or null)
+- `papers`: List of paper objects (array or null)
+- `paper_list`: Bullet-point list with titles and authors (string or null)
+- `no_papers`: Message if no papers found (string or null)
+- `clarification`: Message if topic is invalid (string or null)
+
+**Response Scenarios:**
+- Valid topic, papers found: Returns summary, papers, paper_list
+- Valid topic, no papers: Returns summary as "No papers found...", empty papers, no_papers message
+- Invalid topic: Returns clarification message, all other fields null
+
+---
+
+### `GET /rag/summary?topic=<topic>`
+Retrieves recent arXiv papers for a topic and generates a summary.
+
+**Query Parameter:**
+- `topic`: The research topic to search for (string)
+
+**Response Fields:**
+- `topic`: The topic queried (string)
+- `summary`: Bullet-point list of paper titles, or message if no papers found (string)
+- `papers`: List of paper objects (array)
+
+---
+
+### `GET /health/`
+Health check endpoint.
+
+**Response:**
 ```json
-{
-	"greeting": "Hello! What scientific topic are you interested in today?",
-	"topic": "fourier",
-	"summary": "• Paper title 1\n• Paper title 2\n• Paper title 3",
-	"papers": [
-		{ "id": "http://arxiv.org/abs/2410.xxxxx", "title": "Recent Advances in Fourier Analysis", "abstract": "...", "published": "2024-10-02T17:30:15Z", "authors": ["Author Name"] }
-	],
-	"paper_list": "- Recent Advances in Fourier Analysis (Authors: Author Name)",
-	"no_papers": null
-}
+{ "status": "ok" }
 ```
-Response (valid topic, no papers found):
-```json
-{
-	"greeting": "Hello! What scientific topic are you interested in today?",
-	"topic": "anal fissure",
-	"summary": "No papers found for this topic.",
-	"papers": [],
-	"paper_list": null,
-	"no_papers": "No papers found for this topic."
-}
+
+# Backend Workflow (LangGraph)
+
+```mermaid
+graph TD
+	greet["LLM greets user"]
+	user_input["User writes topic of interest"]
+	typo_check["LLM checks if input is a valid scientific topic"]
+	invalid["LLM says 'Invalid scientific topic, please try again'"]
+	rag["RAG Pipeline: fetch papers from arXiv"]
+	paper_list["Paper list in bulletpoints"]
+	no_papers["LLM replies with 'No papers found'"]
+
+	greet --> user_input --> typo_check
+	typo_check -- invalid --> invalid
+	typo_check -- valid --> rag
+	rag -- if0 --> no_papers
+	rag -- if>0 --> paper_list
 ```
-Response (invalid topic):
-```json
-{
-	"greeting": "Hello! What scientific topic are you interested in today?",
-	"topic": null,
-	"summary": null,
-	"papers": null,
-	"paper_list": null,
-	"no_papers": null,
-	"clarification": "Invalid scientific topic. Please try a different one."
-}
-```
+
 
 ## Configuration
 
